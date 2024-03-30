@@ -125,7 +125,7 @@ fn setup_scene(
                 scene: asset_server.load("level/blockout.glb#Scene0"),
                 ..default()
             },
-            hook: SceneHook::new(|entity, cmds| {
+            hook: SceneHook::new(|_entity, cmds| {
                 cmds.insert(NeedsAudioMesh::default());
             }),
         },
@@ -135,9 +135,19 @@ fn setup_scene(
     // Load detail
     commands.spawn((
         Name::from("Detail"),
-        SceneBundle {
-            scene: asset_server.load("level/detail.glb#Scene0"),
-            ..default()
+        HookedSceneBundle {
+            scene: SceneBundle {
+                scene: asset_server.load("level/detail.glb#Scene0"),
+                ..default()
+            },
+            hook: SceneHook::new(|entity, cmds| {
+                if let Some(name) = entity.get::<Name>() {
+                    if name.as_str().contains("Collider") {
+                        cmds.insert(NeedsAudioMesh::default())
+                            .insert(Visibility::Hidden);
+                    }
+                }
+            }),
         },
     ));
 }
