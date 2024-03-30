@@ -1,25 +1,16 @@
-//! Spatial audio:
-//! The spatial audio bundles provide all the components necessary for spatial audio.
-//! Make sure your sound has a spatializer assigned to it in FMOD Studio.
-//!
-//! Controls:
-//! Use WASD, Space, Shift and the mouse to move around.
-
 use bevy::prelude::*;
 use bevy::window::PresentMode;
 use bevy_fmod::prelude::AudioSource;
 use bevy_fmod::prelude::*;
 use bevy_fmod_phonon::prelude::*;
-use smooth_bevy_cameras::{
-    controllers::fps::{FpsCameraBundle, FpsCameraController, FpsCameraPlugin},
-    LookTransformPlugin,
-};
-use std::f32::consts::PI;
+use bevy_fps_controller::controller::*;
+use bevy_rapier3d::prelude::Velocity;
+use bevy_rapier3d::prelude::*;
+use std::f32::consts::TAU;
 
+use bevy::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use iyes_perf_ui::prelude::*;
-
-#[derive(Component)]
-struct TorusMarker;
 
 fn main() {
     App::new()
@@ -41,104 +32,76 @@ fn main() {
             },
             PhononPlugin,
         ))
-        .add_plugins(LookTransformPlugin)
-        .add_plugins(FpsCameraPlugin::default())
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+        .add_plugins(FpsControllerPlugin)
         .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::EntityCountDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin)
         .add_plugins(PerfUiPlugin)
-        .add_systems(Startup, setup_scene)
+        .add_plugins(WorldInspectorPlugin::new())
+        .add_systems(Startup, (setup_scene, setup_player))
         .add_systems(PostStartup, play_music)
-        //.add_systems(Update, move_object)
         .run();
+}
+
+fn setup_player(mut commands: Commands) {
+    let logical_entity = commands
+        .spawn((
+            Collider::capsule(Vec3::Y * 0.5, Vec3::Y * 1.5, 0.5),
+            Friction {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
+            Restitution {
+                coefficient: 0.0,
+                combine_rule: CoefficientCombineRule::Min,
+            },
+            ActiveEvents::COLLISION_EVENTS,
+            Velocity::zero(),
+            RigidBody::Dynamic,
+            Sleeping::disabled(),
+            LockedAxes::ROTATION_LOCKED,
+            AdditionalMassProperties::Mass(1.0),
+            GravityScale(0.0),
+            Ccd { enabled: true }, // Prevent clipping when going fast
+            TransformBundle::from_transform(Transform::from_xyz(0.0, 3.0, 0.0)),
+            LogicalPlayer,
+            FpsControllerInput {
+                pitch: -TAU / 12.0,
+                yaw: TAU * 5.0 / 8.0,
+                ..default()
+            },
+            FpsController { ..default() },
+        ))
+        .insert(CameraConfig {
+            height_offset: 0.0,
+            radius_scale: 0.75,
+        })
+        .id();
+
+    commands
+        .spawn((
+            Camera3dBundle {
+                projection: Projection::from(PerspectiveProjection {
+                    fov: 80.0 * TAU / 360.0,
+                    ..default()
+                }),
+                ..default()
+            },
+            RenderPlayer { logical_entity },
+        ))
+        .insert(SpatialListenerBundle::default());
 }
 
 fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
     studio: Res<FmodStudio>,
 ) {
     commands.spawn(PerfUiCompleteBundle::default());
 
-    // Cubes
-    let mesh = meshes.add(Cuboid::from_size(Vec3::splat(0.3)));
-    let material = materials.add(Color::rgb(0.8, 0.7, 0.6));
-
-    //28 -> 22k
-    let cube_num = 4;
-
-    for x in 0..cube_num {
-        for y in 0..cube_num {
-            for z in 0..cube_num {
-                commands.spawn((
-                    PbrBundle {
-                        mesh: mesh.clone(),
-                        material: material.clone(),
-                        transform: Transform::from_rotation(Quat::from_rotation_x(PI * 0.5))
-                            .with_translation(Vec3::new(x as f32, y as f32, z as f32)),
-                        ..default()
-                    },
-                    NeedsAudioMesh(materials::BRICK),
-                    TorusMarker,
-                ));
-            }
-        }
-    }
-
-    let wall_mesh = meshes.add(Cuboid::new(5.0, 5.0, 0.3));
-    let translations = [
-        Transform::from_rotation(Quat::from_rotation_x(PI * 0.5))
-            .with_translation(Vec3::new(0.0, -2.5, 0.0)),
-        Transform::from_rotation(Quat::from_rotation_x(PI * 0.0))
-            .with_translation(Vec3::new(0.0, 0.0, 2.5)),
-        Transform::from_rotation(Quat::from_rotation_x(PI * 0.0))
-            .with_translation(Vec3::new(0.0, 0.0, -2.5)),
-    ];
-
-    for translation in translations {
-        commands.spawn((
-            PbrBundle {
-                mesh: wall_mesh.clone(),
-                material: material.clone(),
-                transform: translation,
-                ..default()
-            },
-            NeedsAudioMesh(materials::METAL),
-            TorusMarker,
-        ));
-    }
-
-    // Light
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 150000.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, 2.0, 0.0),
-        ..default()
-    });
-
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 1500.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(-5.0, 4.0, -3.0),
-        ..default()
-    });
-    // Camera
-    commands
-        .spawn(Camera3dBundle::default())
-        .insert(SpatialListenerBundle::default())
-        .insert(FpsCameraBundle::new(
-            FpsCameraController::default(),
-            Vec3::new(2.0, 0.0, -2.0),
-            Vec3::new(0., 0., 0.),
-            Vec3::Y,
-        ));
     // Audio sources
     let event_description = studio.0.get_event("event:/Music/Radio Station").unwrap();
 
@@ -147,17 +110,28 @@ fn setup_scene(
         .insert(PbrBundle {
             mesh: meshes.add(Cuboid::default()),
             material: materials.add(Color::rgb(0.8, 0.2, 0.2)),
-            transform: Transform::from_xyz(0.0, 0.5, 1.5).with_scale(Vec3::splat(0.05)),
+            transform: Transform::from_xyz(0.0, 1.5, 20.0).with_scale(Vec3::splat(0.25)),
             ..default()
         });
-}
 
-fn move_object(mut obj_query: Query<&mut Transform, With<TorusMarker>>, time: Res<Time>) {
-    let sin = time.elapsed_seconds().sin() * 0.01;
+    // Load blockout
+    commands.spawn((
+        Name::from("Blockout"),
+        SceneBundle {
+            scene: asset_server.load("level/blockout.glb#Scene0"),
+            ..default()
+        },
+        AsyncSceneCollider::default(),
+    ));
 
-    for mut transform in &mut obj_query {
-        transform.translation.y += sin;
-    }
+    // Load detail
+    commands.spawn((
+        Name::from("Detail"),
+        SceneBundle {
+            scene: asset_server.load("level/detail.glb#Scene0"),
+            ..default()
+        },
+    ));
 }
 
 fn play_music(mut audio_sources: Query<&AudioSource>) {
