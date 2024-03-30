@@ -13,6 +13,7 @@ bevy_fmod = { git = "https://github.com/Salzian/bevy_fmod.git", branch = "main" 
 bevy_fmod_phonon = { path = "C:/rust/bevy_fmod_phonon" }
 bevy_fps_controller = "0.2"
 bevy_rapier3d = "0.25"
+bevy-scene-hook = "10"
 iyes_perf_ui = "0.2"
 bevy-inspector-egui = "0.23"
 

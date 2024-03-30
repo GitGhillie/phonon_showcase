@@ -6,6 +6,8 @@ use bevy_fmod_phonon::prelude::*;
 use bevy_fps_controller::controller::*;
 use bevy_rapier3d::prelude::Velocity;
 use bevy_rapier3d::prelude::*;
+use bevy_scene_hook::{HookPlugin, HookedSceneBundle, SceneHook};
+
 use std::f32::consts::TAU;
 
 use bevy::prelude::*;
@@ -34,6 +36,7 @@ fn main() {
         ))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
         .add_plugins(FpsControllerPlugin)
+        .add_plugins(HookPlugin)
         .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::EntityCountDiagnosticsPlugin)
         .add_plugins(bevy::diagnostic::SystemInformationDiagnosticsPlugin)
@@ -117,9 +120,14 @@ fn setup_scene(
     // Load blockout
     commands.spawn((
         Name::from("Blockout"),
-        SceneBundle {
-            scene: asset_server.load("level/blockout.glb#Scene0"),
-            ..default()
+        HookedSceneBundle {
+            scene: SceneBundle {
+                scene: asset_server.load("level/blockout.glb#Scene0"),
+                ..default()
+            },
+            hook: SceneHook::new(|entity, cmds| {
+                cmds.insert(NeedsAudioMesh::default());
+            }),
         },
         AsyncSceneCollider::default(),
     ));
