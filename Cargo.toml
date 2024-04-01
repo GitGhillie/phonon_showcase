@@ -10,7 +10,7 @@ dynamic_linking = ["bevy/dynamic_linking"]
 [dependencies]
 bevy = "0.13"
 bevy_fmod = { git = "https://github.com/Salzian/bevy_fmod.git", branch = "main" }
-bevy_fmod_phonon = { path = "C:/rust/bevy_fmod_phonon" }
+bevy_fmod_phonon = { path = "C:/rust/bevy_fmod_phonon" } #todo
 bevy_fps_controller = "0.2"
 bevy_rapier3d = "0.25"
 bevy-scene-hook = "10"
