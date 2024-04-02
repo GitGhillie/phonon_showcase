@@ -41,9 +41,12 @@ enum WalkingState {
     CrouchedWalking,
 }
 
-fn play_walking_sound(mut audio_sources: Query<&AudioSource>) {
+#[derive(Component)]
+struct FootstepAudioMarker;
+
+// todo filter which audio source
+fn play_walking_sound(mut audio_sources: Query<&AudioSource, With<FootstepAudioMarker>>) {
     for audio_source in audio_sources.iter_mut() {
-        println!("Playing walking sounds");
         audio_source.play();
     }
 }
@@ -124,6 +127,7 @@ fn setup_player(
         .0
         .get_event("event:/Character/Player Footsteps")
         .unwrap();
+
     let child = commands
         .spawn(SpatialAudioBundle::new(event_description))
         .insert(PbrBundle {
@@ -132,6 +136,7 @@ fn setup_player(
             transform: Transform::from_xyz(0.0, 0.2, 0.0).with_scale(Vec3::splat(0.25)),
             ..default()
         })
+        .insert(FootstepAudioMarker)
         .id();
 
     commands.entity(logical_entity).add_child(child);

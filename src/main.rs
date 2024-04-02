@@ -43,6 +43,7 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup_scene)
         .add_systems(PostStartup, play_music)
+        .add_systems(Update, enable_shadows)
         .run();
 }
 
@@ -56,16 +57,16 @@ fn setup_scene(
     commands.spawn(PerfUiCompleteBundle::default());
 
     // Audio sources
-    // let event_description = studio.0.get_event("event:/Music/Radio Station").unwrap();
-    //
-    // commands
-    //     .spawn(SpatialAudioBundle::new(event_description))
-    //     .insert(PbrBundle {
-    //         mesh: meshes.add(Cuboid::default()),
-    //         material: materials.add(Color::rgb(0.8, 0.2, 0.2)),
-    //         transform: Transform::from_xyz(0.0, 1.5, 20.0).with_scale(Vec3::splat(0.25)),
-    //         ..default()
-    //     });
+    let event_description = studio.0.get_event("event:/Music/Radio Station").unwrap();
+
+    commands
+        .spawn(SpatialAudioBundle::new(event_description))
+        .insert(PbrBundle {
+            mesh: meshes.add(Cuboid::default()),
+            material: materials.add(Color::rgb(0.8, 0.2, 0.2)),
+            transform: Transform::from_xyz(0.0, 1.5, 20.0).with_scale(Vec3::splat(0.25)),
+            ..default()
+        });
 
     // Load blockout
     commands.spawn((
@@ -105,5 +106,11 @@ fn setup_scene(
 fn play_music(mut audio_sources: Query<&AudioSource>) {
     for audio_source in audio_sources.iter_mut() {
         audio_source.play();
+    }
+}
+
+fn enable_shadows(mut added_lights: Query<&mut DirectionalLight, Added<DirectionalLight>>) {
+    for mut dir_light in &mut added_lights {
+        dir_light.shadows_enabled = true;
     }
 }
