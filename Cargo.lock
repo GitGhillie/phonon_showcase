@@ -695,6 +695,7 @@ dependencies = [
 [[package]]
 name = "bevy_fmod_phonon"
 version = "0.1.0"
+source = "git+https://github.com/GitGhillie/bevy_fmod_phonon.git?branch=main#22aa9692e2bcf94d3671f10dba55e689581a7413"
 dependencies = [
  "bevy",
  "bevy_fmod",
@@ -3839,6 +3840,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steamaudio"
 version = "0.1.0"
+source = "git+https://github.com/GitGhillie/steamaudio.git?branch=merged#49c3452b77f27197fa8528a5da9377c867f6547f"
 dependencies = [
  "bindgen",
  "glam",
