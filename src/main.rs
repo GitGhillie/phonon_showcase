@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use bevy::window::PresentMode;
 use bevy_fmod::prelude::AudioSource;
 use bevy_fmod::prelude::*;
+use bevy_fmod_phonon::prelude::materials::{CARPET, CONCRETE};
 use bevy_fmod_phonon::prelude::*;
 use bevy_rapier3d::prelude::AsyncSceneCollider;
 
@@ -43,9 +44,12 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, setup_scene)
         .add_systems(PostStartup, play_music)
-        .add_systems(Update, enable_shadows)
+        .add_systems(Update, (enable_shadows, toggle_carpets))
         .run();
 }
+
+#[derive(Component)]
+struct CarpetsMarker;
 
 fn setup_scene(
     mut commands: Commands,
@@ -64,7 +68,7 @@ fn setup_scene(
         .insert(PbrBundle {
             mesh: meshes.add(Cuboid::default()),
             material: materials.add(Color::rgb(0.8, 0.2, 0.2)),
-            transform: Transform::from_xyz(0.0, 1.5, 20.0).with_scale(Vec3::splat(0.25)),
+            transform: Transform::from_xyz(33.1, 1.5, -18.5).with_scale(Vec3::splat(0.25)),
             ..default()
         });
 
@@ -77,10 +81,26 @@ fn setup_scene(
                 ..default()
             },
             hook: SceneHook::new(|_entity, cmds| {
-                cmds.insert(NeedsAudioMesh::default());
+                cmds.insert(NeedsAudioMesh(CONCRETE));
             }),
         },
         AsyncSceneCollider::default(),
+    ));
+
+    // Load carpets
+    commands.spawn((
+        Name::from("Carpets"),
+        HookedSceneBundle {
+            scene: SceneBundle {
+                scene: asset_server.load("level/carpets.glb#Scene0"),
+                ..default()
+            },
+            hook: SceneHook::new(|_entity, cmds| {
+                cmds.insert(NeedsAudioMesh(CARPET));
+            }),
+        },
+        AsyncSceneCollider::default(),
+        CarpetsMarker,
     ));
 
     // Load detail
@@ -109,8 +129,31 @@ fn play_music(mut audio_sources: Query<&AudioSource>) {
     }
 }
 
-fn enable_shadows(mut added_lights: Query<&mut DirectionalLight, Added<DirectionalLight>>) {
-    for mut dir_light in &mut added_lights {
+fn enable_shadows(
+    mut added_dir_lights: Query<&mut DirectionalLight, Added<DirectionalLight>>,
+    mut added_point_lights: Query<&mut PointLight, Added<PointLight>>,
+) {
+    for mut dir_light in &mut added_dir_lights {
         dir_light.shadows_enabled = true;
+    }
+
+    for mut point_light in &mut added_point_lights {
+        point_light.shadows_enabled = true;
+    }
+}
+
+fn toggle_carpets(
+    mut carpets_query: Query<&mut Transform, With<CarpetsMarker>>,
+    keys: Res<ButtonInput<KeyCode>>,
+) {
+    if keys.just_pressed(KeyCode::KeyR) {
+        // todo: bevy_fmod_phonon should have an API to actually hide meshes
+        for mut carpet_transform in &mut carpets_query {
+            if carpet_transform.translation.y < -5.0 {
+                carpet_transform.translation = Vec3::new(0.0, 0.0, 0.0);
+            } else {
+                carpet_transform.translation = Vec3::new(0.0, -100.0, 0.0);
+            }
+        }
     }
 }
